@@ -63,7 +63,7 @@ class BaseQueryRequest extends AbstractBaseRequest
 
         $result['is_paid'] = false;
 
-        if ($result['return_code'] == 'SUCCESS' && $result['result_code'] == 'SUCCESS') {
+        if ($result['return_code'] == 'SUCCESS' && $result['result_code'] == 'SUCCESS' && $result['trade_state'] == 'SUCCESS') {
             if (array_key_exists('sign', $result)) {
                 $sign = Helper::getSignByMD5($result, $this->getKey());
 
