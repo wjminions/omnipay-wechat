@@ -23,20 +23,16 @@ class BaseQueryRequest extends AbstractBaseRequest
     {
         $this->validate(
             'appid',
-            'rsa_private_key',
             'mch_id',
             'key',
-            'Wechat_rsa_public_key',
             'out_trade_no'
         );
 
         $data = array(
-            "appid"                => $this->getAppid(),
-            "rsa_private_key"       => $this->getRsaPrivateKey(),
-            "mch_id"             => $this->getMchId(),
-            "key"             => $this->getKey(),
-            "Wechat_rsa_public_key" => $this->getWechatRsaPublicKey(),
-            "out_trade_no"          => $this->getOutTradeNo(),
+            "appid"          => $this->getAppid(),
+            "mch_id"         => $this->getMchId(),
+            "key"            => $this->getKey(),
+            "out_trade_no"   => $this->getOutTradeNo(),
         );
 
         return $data;
@@ -52,36 +48,31 @@ class BaseQueryRequest extends AbstractBaseRequest
     public function sendData($data)
     {
 
-        $aop                     = new \AopClient ();
-        $aop->gatewayUrl         = $this->getEndpoint('query');
-        $aop->BaseId              = $data['Base_id'];
-        $aop->rsaPrivateKey      = $data['rsa_private_key'];
-        $aop->WechatrsaPublicKey = $data['Wechat_rsa_public_key'];
-        $aop->apiVersion         = '1.0';
-        $aop->signType           = $data['mch_id'];
-        $aop->postCharset        = 'UTF-8';
-        $aop->format             = 'json';
-        $request                 = new \WechatTradeQueryRequest ();
-
-        $biz_content = array(
-            "out_trade_no"    => $data['out_trade_no'],
+        $params = array(
+            "appid"          => $this->getAppid(),
+            "mch_id"         => $this->getMchId(),
+            "nonce_str"      => md5(time()),
+            "out_trade_no"   => $this->getOutTradeNo()
         );
 
-        $biz_content = json_encode($biz_content);
+        $params['sign'] = Helper::getSignByMD5($params, $this->getKey());
 
-        $request->setBizContent($biz_content);
+        $response = Helper::sendHttpRequest($this->getEndpoint('query'), Helper::arrayToXml($params));
 
-        $result = $aop->execute($request);
+        $result = Helper::xmlToArray($response);
 
-        $responseNode = str_replace(".", "_", $request->getApiMethodName()) . "_response";
-        $resultCode   = $result->$responseNode->code;
+        $result['is_paid'] = false;
 
-        if (! empty($resultCode) && $resultCode == 10000) {
-            $data['is_paid'] = true;
-        } else {
-            $data['is_paid'] = false;
+        if ($result['return_code'] == 'SUCCESS' && $result['result_code'] == 'SUCCESS') {
+            if (array_key_exists('sign', $result)) {
+                $sign = Helper::getSignByMD5($result, $this->getKey());
+
+                if ($result['sign'] == $sign) {
+                    $result['is_paid'] = true;
+                }
+            }
         }
 
-        return array_merge($data, (array) $result->$responseNode);
+        return $result;
     }
 }

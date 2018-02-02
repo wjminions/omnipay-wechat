@@ -12,7 +12,6 @@ use Omnipay\Wechat\Helper;
  */
 class BaseRefundRequest extends AbstractBaseRequest
 {
-
     /**
      * Get the raw data array for this message. The format of this varies from gateway to
      * gateway, but will usually be either an associative array, or a SimpleXMLElement.
@@ -23,26 +22,28 @@ class BaseRefundRequest extends AbstractBaseRequest
     {
         $this->validate(
             'appid',
-            'rsa_private_key',
             'mch_id',
             'key',
-            'Wechat_rsa_public_key',
             'out_trade_no',
-            'refund_amount',
-            'out_request_no',
-            'trade_no'
+            'total_fee',
+            'refund_fee',
+            'out_refund_no',
+            'transaction_id',
+            'apiclient_cert',
+            'apiclient_key'
         );
 
         $data = array(
-            "appid"                => $this->getAppid(),
-            "rsa_private_key"       => $this->getRsaPrivateKey(),
-            "mch_id"             => $this->getMchId(),
-            "key"             => $this->getKey(),
-            "Wechat_rsa_public_key" => $this->getWechatRsaPublicKey(),
-            "out_trade_no"          => $this->getOutTradeNo(),
-            "refund_amount"         => $this->getRefundAmount(),
-            "out_request_no"        => $this->getOutRequestNo(),
-            'trade_no'              => $this->getTradeNo(),
+            "appid"          => $this->getAppid(),
+            "mch_id"         => $this->getMchId(),
+            "key"            => $this->getKey(),
+            "out_trade_no"   => $this->getOutTradeNo(),
+            "total_fee"      => $this->getTotalFee(),
+            "refund_fee"     => $this->getRefundFee(),
+            "out_refund_no"  => $this->getOutRefundNo(),
+            'transaction_id' => $this->getTransactionId(),
+            'apiclient_cert' => $this->getApiclientCert(),
+            'apiclient_key'  => $this->getApiclientKey(),
         );
 
         return $data;
@@ -57,38 +58,36 @@ class BaseRefundRequest extends AbstractBaseRequest
      */
     public function sendData($data)
     {
-        $aop                     = new \AopClient ();
-        $aop->gatewayUrl         = $this->getEndpoint('refund');
-        $aop->BaseId              = $data['Base_id'];
-        $aop->rsaPrivateKey      = $data['rsa_private_key'];
-        $aop->WechatrsaPublicKey = $data['Wechat_rsa_public_key'];
-        $aop->apiVersion         = '1.0';
-        $aop->signType           = $data['mch_id'];
-        $aop->postCharset        = 'UTF-8';
-        $aop->format             = 'json';
-        $request                 = new \WechatTradeRefundRequest ();
-
-        $biz_content = array(
-            "out_trade_no"   => $data['out_trade_no'],
-            "trade_no"       => $data['trade_no'],
-            "refund_amount"  => $data['refund_amount'],
-            "out_request_no" => $data['out_request_no'],
+        $params = array(
+            "appid"          => $this->getAppid(),
+            "mch_id"         => $this->getMchId(),
+            "nonce_str"      => md5(time()),
+            "sign_type"      => "MD5",
+            "transaction_id" => $this->getTransactionId(),
+            "out_trade_no"   => $this->getOutTradeNo(),
+            "out_refund_no"  => $this->getOutRefundNo(),
+            "total_fee"      => $this->getTotalFee(),
+            "refund_fee"     => $this->getRefundFee()
         );
 
-        $biz_content = json_encode($biz_content);
+        $params['sign'] = Helper::getSignByMD5($params, $this->getKey());
 
-        $request->setBizContent($biz_content);
-        $result = $aop->execute($request);
+        $response = Helper::sendHttpRequest($this->getEndpoint('refund'), Helper::arrayToXml($params), $data['apiclient_cert'], $data['apiclient_key']);
 
-        $responseNode = str_replace(".", "_", $request->getApiMethodName()) . "_response";
-        $resultCode   = $result->$responseNode->code;
+        $result = Helper::xmlToArray($response);
 
-        if (! empty($resultCode) && $resultCode == 10000) {
-            $data['is_paid'] = true;
-        } else {
-            $data['is_paid'] = false;
+        $result['is_paid'] = false;
+
+        if ($result['return_code'] == 'SUCCESS' && $result['result_code'] == 'SUCCESS') {
+            if (array_key_exists('sign', $result)) {
+                $sign = Helper::getSignByMD5($result, $this->getKey());
+
+                if ($result['sign'] == $sign) {
+                    $result['is_paid'] = true;
+                }
+            }
         }
 
-        return $this->response = new BaseRefundResponse($this, array_merge($data, (array)$result->$responseNode));
+        return $this->response = new BaseRefundResponse($this, $result);
     }
 }

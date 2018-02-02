@@ -6,42 +6,99 @@ class Helper
 {
     public static function getSignByMD5($params, $key)
     {
-        $query = self::getStringByParams($params);
-
-        $signature = md5($query . '&' . $key);
-
-        return $signature;
-    }
-
-    public static function getStringByParams($params)
-    {
+        //签名步骤一：按字典序排序参数
         ksort($params);
-        $query = http_build_query($params);
-        $query = urldecode($query);
-
-        return $query;
+        $string = Helper::ToUrlParams($params);
+        //签名步骤二：在string后加入KEY
+        $string = $string . "&key=" . $key;
+        //签名步骤三：MD5加密
+        $string = md5($string);
+        //签名步骤四：所有字符转为大写
+        return strtoupper($string);
     }
 
-    public static function sendHttpRequest($url, $params)
+    public static function sendHttpRequest($url, $xml, $cert = '', $key = '')
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSLVERSION, 3);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array ('Content-type:application/x-www-form-urlencoded;charset=UTF-8'));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $result = curl_exec($ch);
-        curl_close($ch);
 
-        return $result;
+        if (stripos($url,"https://") !== FALSE) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+        } else {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        }
+
+        // cert 与 key 分别属于两个.pem文件
+        if (! empty($cert) && ! empty($key)) {
+            curl_setopt($ch,CURLOPT_SSLCERTTYPE,'PEM');
+            curl_setopt($ch,CURLOPT_SSLCERT, $cert);
+            curl_setopt($ch,CURLOPT_SSLKEYTYPE,'PEM');
+            curl_setopt($ch,CURLOPT_SSLKEY, $key);
+        }
+
+
+        curl_setopt($ch, CURLOPT_HEADER, FALSE);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, TRUE);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $xml);
+        $result = curl_exec($ch);
+
+        if($result){
+            curl_close($ch);
+
+            return $result;
+        } else {
+            $error = curl_errno($ch);
+            curl_close($ch);
+
+            throw new \Exception("curl出错，错误码:$error");
+        }
     }
 
-    public static function getIp()
+    public static function arrayToXml($arr)
     {
+        $xml = "<xml>";
+        foreach ($arr as $key => $val)
+        {
+            if (is_numeric($val)){
+                $xml .= "<" . $key . ">" . $val . "</" . $key . ">";
+            }else{
+                $xml .= "<" . $key . "><![CDATA[" . $val . "]]></" . $key . ">";
+            }
+        }
 
+        $xml .= "</xml>";
+
+        return $xml;
+    }
+
+    public static function xmlToArray($xml)
+    {
+        //禁止引用外部xml实体
+        libxml_disable_entity_loader(true);
+
+        $values = json_decode(json_encode(simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NOCDATA)), true);
+
+        return $values;
+    }
+
+    /**
+     * 格式化参数格式化成url参数
+     */
+    public static function ToUrlParams($values)
+    {
+        $buff = "";
+        foreach ($values as $k => $v)
+        {
+            if($k != "sign" && $v != "" && !is_array($v)){
+                $buff .= $k . "=" . $v . "&";
+            }
+        }
+
+        $buff = trim($buff, "&");
+        return $buff;
     }
 }

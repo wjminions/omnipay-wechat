@@ -38,17 +38,23 @@ class BaseCompletePurchaseRequest extends AbstractBaseRequest
      */
     public function sendData($data)
     {
-        $aop = new \AopClient;
-        $aop->WechatrsaPublicKey = $this->getWechatRsaPublicKey();
-        $flag = $aop->rsaCheckV1($_POST, NULL, $this->getSignType());
-
         $data['is_paid'] = false;
-        if ($flag) {
-            // 验证通过
-            $data['is_paid'] = true;
 
-            http_response_code(200);
-            echo 'success';
+        if ($data['return_code'] == 'SUCCESS' && $data['result_code'] == 'SUCCESS') {
+            if (array_key_exists('sign', $data)) {
+                $sign = Helper::getSignByMD5($data, $this->getKey());
+
+                if($data['sign'] == $sign){
+                    $data['is_paid'] = true;
+
+                    $params = array(
+                        "return_code"            => 'SUCCESS',
+                        "return_msg"           => 'OK',
+                    );
+
+                    echo Helper::arrayToXml($params);
+                }
+            }
         }
 
         return $this->response = new BaseCompletePurchaseResponse($this, $data);

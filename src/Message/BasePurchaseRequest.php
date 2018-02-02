@@ -65,10 +65,42 @@ class BasePurchaseRequest extends AbstractBaseRequest
             "trade_type"       => 'APP',
         );
 
-        $data['sign'] = Helper::getSignByMD5($params, $this->getKey());
+        $params['sign'] = Helper::getSignByMD5($params, $this->getKey());
 
-        $response = Helper::sendHttpRequest($this->getEndpoint('pay'), $data);
-var_dump($response);die;
-        return $this->response = new BasePurchaseResponse($this, $response);
+        $response = Helper::sendHttpRequest($this->getEndpoint('pay'), Helper::arrayToXml($params));
+
+        $result = Helper::xmlToArray($response);
+
+        if ($result['return_code'] == 'SUCCESS') {
+            if (! array_key_exists('sign', $result)) {
+                throw new \Exception("签名错误！");
+            }
+
+            if ($result['result_code'] != 'SUCCESS') {
+                throw new \Exception("結果错误！");
+            }
+
+            $sign = Helper::getSignByMD5($result, $this->getKey());
+
+            if ($result['sign'] != $sign) {
+                throw new \Exception("签名错误！");
+            }
+        }
+
+        // 发起APP支付
+        $app = array(
+            "appid"     => $this->getAppid(),
+            "partnerid" => $this->getMchId(),
+            "noncestr"  => md5(time()),
+            "prepayid"  => $result['prepay_id'],
+            "package"   => "Sign=WXPay",
+            "timestamp" => time(),
+        );
+
+        $app['sign'] = Helper::getSignByMD5($app, $this->getKey());
+
+        $app['return_code'] = $result['return_code'];
+
+        return $this->response = new BasePurchaseResponse($this, json_encode($app));
     }
 }

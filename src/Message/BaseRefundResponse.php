@@ -37,7 +37,7 @@ class BaseRefundResponse extends AbstractResponse
 
     public function getTransactionNo()
     {
-        return isset($this->data['trade_no']) ? $this->data['trade_no'] : '';
+        return isset($this->data['refund_id']) ? $this->data['refund_id'] : '';
     }
 
 
@@ -67,6 +67,6 @@ class BaseRefundResponse extends AbstractResponse
 
     public function getMessage()
     {
-        return isset($this->data['sub_msg']) ? $this->data['sub_msg'] : $this->data['msg'];
+        return isset($this->data['return_msg']) ? $this->data['return_msg'] : $this->data['result_code'];
     }
 }

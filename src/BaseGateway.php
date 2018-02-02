@@ -44,25 +44,25 @@ class BaseGateway extends AbstractGateway
     }
 
 
-    public function setRsaPrivateKey($value)
+    public function setApiclientCert($value)
     {
-        return $this->setParameter('rsa_private_key', $value);
+        return $this->setParameter('apiclient_cert', $value);
     }
 
-    public function getRsaPrivateKey()
+    public function getApiclientCert()
     {
-        return $this->getParameter('rsa_private_key');
+        return $this->getParameter('apiclient_cert');
     }
 
 
-    public function setWechatRsaPublicKey($value)
+    public function setApiclientKey($value)
     {
-        return $this->setParameter('Wechat_rsa_public_key', $value);
+        return $this->setParameter('apiclient_key', $value);
     }
 
-    public function getWechatRsaPublicKey()
+    public function getApiclientKey()
     {
-        return $this->getParameter('Wechat_rsa_public_key');
+        return $this->getParameter('apiclient_key');
     }
 
 
@@ -132,36 +132,36 @@ class BaseGateway extends AbstractGateway
     }
 
 
-    public function setRefundAmount($value)
+    public function setRefundFee($value)
     {
-        return $this->setParameter('refund_amount', $value);
+        return $this->setParameter('refund_fee', $value);
     }
 
-    public function getRefundAmount()
+    public function getRefundFee()
     {
-        return $this->getParameter('refund_amount');
-    }
-
-
-    public function setOutRequestNo($value)
-    {
-        return $this->setParameter('out_request_no', $value);
-    }
-
-    public function getOutRequestNo()
-    {
-        return $this->getParameter('out_request_no');
+        return $this->getParameter('refund_fee');
     }
 
 
-    public function setTradeNo($value)
+    public function setOutRefundNo($value)
     {
-        return $this->setParameter('trade_no', $value);
+        return $this->setParameter('out_refund_no', $value);
     }
 
-    public function getTradeNo()
+    public function getOutRefundNo()
     {
-        return $this->getParameter('trade_no');
+        return $this->getParameter('out_refund_no');
+    }
+
+
+    public function setTransactionId($value)
+    {
+        return $this->setParameter('transaction_id', $value);
+    }
+
+    public function getTransactionId()
+    {
+        return $this->getParameter('transaction_id');
     }
 
 
